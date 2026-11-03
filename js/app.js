@@ -56,25 +56,24 @@ document.addEventListener('click',e=>{let page=e.target.closest('[data-page]');l
 // 작품 갤러리 (기존 장비 사진 images 폴더와 독립)
 let worksItems=[];
 function workFileValid(f){return typeof f==='string' && !f.startsWith('/') && !f.includes('..') && !f.includes('\\') && /\.(jpe?g|png|webp|gif|avif)$/i.test(f)}
-function workSrc(w){return (w.folder==='galley'?'galley/':'gallery/')+w.file.split('/').map(encodeURIComponent).join('/')}
+function workSrc(w){return 'gallery/'+w.file.split('/').map(encodeURIComponent).join('/')}
 function titleFromFile(f){return f.split('/').pop().replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ')}
 function renderWorks(){
  const grid=document.getElementById('worksGrid'); if(!grid)return;
  const q=document.getElementById('worksSearch').value.trim().toLocaleLowerCase();
  const cat=document.getElementById('worksCategory').value;
  const selected=worksItems.filter(w=>(cat==='all'||w.category===cat) && [w.title,w.description,w.category,w.file].join(' ').toLocaleLowerCase().includes(q));
- grid.innerHTML=selected.map(w=>`<article class="work-card"><div class="work-img-clip"><img class="work-photo" src="${esc(workSrc(w))}" alt="${esc(w.title)}" loading="lazy"></div><div class="work-card-body"><span class="work-category">${esc(w.category)}</span><h3>${esc(w.title)}</h3><p>${esc(w.description||'작품 설명을 준비 중입니다.')}</p><div class="work-actions"><span class="small">MAKER WORK</span><button type="button" class="linklike" data-work="${esc(w.folder+':'+w.file)}">작품 크게 보기 ↗</button></div></div></article>`).join('')||'<div class="empty">표시할 작품이 없습니다. gallery 또는 galley 폴더에 사진을 넣어 주세요.</div>';
+ grid.innerHTML=selected.map(w=>`<article class="work-card"><div class="work-img-clip"><img class="work-photo" src="${esc(workSrc(w))}" alt="${esc(w.title)}" loading="lazy"></div><div class="work-card-body"><span class="work-category">${esc(w.category)}</span><h3>${esc(w.title)}</h3><p>${esc(w.description||'작품 설명을 준비 중입니다.')}</p><div class="work-actions"><span class="small">MAKER WORK</span><button type="button" class="linklike" data-work="${esc(w.file)}">작품 크게 보기 ↗</button></div></div></article>`).join('')||'<div class="empty">표시할 작품이 없습니다. gallery 폴더에 사진을 넣어 주세요.</div>';
  document.getElementById('worksStatus').textContent=`등록 작품 ${worksItems.length}개 · 현재 표시 ${selected.length}개`;
 }
 async function loadWorks(){
  const status=document.getElementById('worksStatus');
  try{
-  const [filesRes,metaRes,altMetaRes]=await Promise.all([fetch('gallery-manifest.json',{cache:'no-store'}),fetch('gallery/works.json',{cache:'no-store'}),fetch('galley/works.json',{cache:'no-store'})]);
+  const [filesRes,metaRes]=await Promise.all([fetch('gallery-manifest.json',{cache:'no-store'}),fetch('gallery/works.json',{cache:'no-store'})]);
   if(!filesRes.ok)throw new Error('작품 목록을 읽지 못했습니다.');
   const files=(await filesRes.json()).images||[];
   const metadata=metaRes.ok?(await metaRes.json()).works||{}:{};
-  const altMetadata=altMetaRes.ok?(await altMetaRes.json()).works||{}:{};
-  worksItems=files.map(v=>typeof v==='string'?{file:v,folder:'gallery'}:v).filter(v=>v && ['gallery','galley'].includes(v.folder) && workFileValid(v.file)).map(v=>{const m=(v.folder==='galley'?altMetadata:metadata)[v.file]||(v.folder==='galley'?altMetadata:metadata)[v.file.split('/').pop()]||{};return {file:v.file,folder:v.folder,title:String(m.title||titleFromFile(v.file)),description:String(m.description||''),category:String(m.category||'기타 작품')}});
+  worksItems=files.map(v=>typeof v==='string'?{file:v,folder:'gallery'}:v).filter(v=>v && v.folder==='gallery' && workFileValid(v.file)).map(v=>{const m=metadata[v.file]||metadata[v.file.split('/').pop()]||{};return {file:v.file,folder:v.folder,title:String(m.title||titleFromFile(v.file)),description:String(m.description||''),category:String(m.category||'기타 작품')}});
   const cat=document.getElementById('worksCategory');const before=cat.value;
   cat.innerHTML='<option value="all">전체 분야</option>'+[...new Set(worksItems.map(w=>w.category))].sort().map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
   if([...cat.options].some(x=>x.value===before))cat.value=before;
@@ -84,47 +83,66 @@ async function loadWorks(){
 document.getElementById('worksSearch').addEventListener('input',renderWorks);
 document.getElementById('worksCategory').addEventListener('change',renderWorks);
 document.getElementById('worksReload').addEventListener('click',loadWorks);
-document.addEventListener('click',e=>{const b=e.target.closest('[data-work]');if(!b)return;const w=worksItems.find(x=>(x.folder+':'+x.file)===b.dataset.work);if(!w)return;document.getElementById('modalTitle').textContent=w.title;document.getElementById('modalContent').innerHTML=`<img class="work-view-image" src="${esc(workSrc(w))}" alt="${esc(w.title)}"><p class="work-category">${esc(w.category)}</p><p style="white-space:pre-line">${esc(w.description||'작품 설명이 없습니다.')}</p>`;document.getElementById('detailModal').classList.add('open');});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-work]');if(!b)return;const w=worksItems.find(x=>x.file===b.dataset.work);if(!w)return;document.getElementById('modalTitle').textContent=w.title;document.getElementById('modalContent').innerHTML=`<img class="work-view-image" src="${esc(workSrc(w))}" alt="${esc(w.title)}"><p class="work-category">${esc(w.category)}</p><p style="white-space:pre-line">${esc(w.description||'작품 설명이 없습니다.')}</p>`;document.getElementById('detailModal').classList.add('open');});
 loadWorks();
 
 
-// MUSIC PLAYER — no autoplay, supports MP3/WAV/OGG/M4A/AAC. Existing gallery remains independent.
+// Background audio: attempts autoplay, then offers an explicit tap-to-play fallback.
+// Modern browsers frequently prohibit audible autoplay, especially on mobile.
 (()=>{
-const audio=document.getElementById('musicAudio'), list=document.getElementById('musicList');
-const status=document.getElementById('musicStatus');
-let tracks=[], current=-1, repeatMode=0; // 0 = off, 1 = all, 2 = one
-const byId=id=>document.getElementById(id);
-const text=(id,value)=>byId(id).textContent=value;
-const validFile=name=>typeof name==='string'&&!name.startsWith('/')&&!name.includes('..')&&!name.includes('\\')&&/\.(mp3|wav|ogg|m4a|aac)$/i.test(name);
-const mediaUrl=name=>'music/'+name.split('/').map(encodeURIComponent).join('/');
-const prettyName=name=>name.split('/').pop().replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ');
-const safeString=value=>String(value??'');
-const escapeHtml=s=>safeString(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const duration=t=>Number.isFinite(t)?Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0'):'0:00';
-const savePrefs=()=>{try{localStorage.setItem('maker-music-volume',String(audio.volume));localStorage.setItem('maker-music-repeat',String(repeatMode))}catch{}};
-try{const v=Number(localStorage.getItem('maker-music-volume'));audio.volume=Number.isFinite(v)?Math.max(0,Math.min(1,v)):0.6;repeatMode=Math.min(2,Math.max(0,Number(localStorage.getItem('maker-music-repeat'))||0))}catch{audio.volume=0.6}
-byId('musicVolume').value=Math.round(audio.volume*100);
-function updateRepeat(){const b=byId('musicRepeat');b.classList.toggle('on',repeatMode!==0);b.title=['반복 꺼짐','전체 반복','한 곡 반복'][repeatMode];b.setAttribute('aria-label',b.title);b.textContent=['↻','🔁','↺₁'][repeatMode]}
-function updatePlaying(){text('musicPlay',audio.paused?'▶':'❚❚');byId('musicPlay').setAttribute('aria-label',audio.paused?'재생':'일시정지');const t=tracks[current];text('musicDockTitle',t?t.title:'MAKER LAB PLAYLIST');text('musicDockSubtitle',t?(audio.paused?'일시정지 · ':'재생 중 · ')+(t.artist||'Maker Lab'):'곡을 선택해 재생하세요');text('musicPageTitle',t?t.title:'플레이리스트를 준비해 주세요');text('musicPageDesc',t?(t.description||'제작의 즐거움을 음악으로 만나보세요.'):'music 폴더에 음원을 넣으면 목록에 자동으로 표시됩니다.');renderList()}
-function renderList(){list.innerHTML=tracks.length?tracks.map((t,i)=>`<div class="music-item ${current===i?'active':''}"><button type="button" data-track-index="${i}" aria-label="${escapeHtml(t.title)} ${current===i&&!audio.paused?'일시정지':'재생'}">${current===i&&!audio.paused?'❚❚':'▶'}</button><div><strong>${escapeHtml(t.title)}</strong><p>${escapeHtml(t.description||t.artist||'메이커 음악')}</p></div><span class="music-file">${escapeHtml(t.file)}</span></div>`).join(''):'<div class="empty">아직 등록된 음악이 없습니다. music 폴더에 MP3 등 오디오 파일을 넣어 주세요.</div>'}
-async function loadTracks(){status.textContent='음악을 확인하는 중입니다.';try{const r=await fetch('music-manifest.json?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('음악 목록 파일이 없습니다');const files=(await r.json()).tracks||[];let meta={};try{const m=await fetch('music/tracks.json?nocache='+Date.now(),{cache:'no-store'});if(m.ok)meta=(await m.json()).tracks||{}}catch{}const old=tracks[current]?.file;tracks=files.filter(validFile).map(file=>{const x=meta[file]||meta[file.split('/').pop()]||{};return {file,title:safeString(x.title||prettyName(file)),artist:safeString(x.artist||'Maker Lab'),description:safeString(x.description||'')}});status.textContent=`등록 음악 ${tracks.length}곡 · 음악을 선택하면 재생됩니다.`;
-// Preserve selected audio source while refreshing; do not force playback.
-if(old){const found=tracks.findIndex(t=>t.file===old);if(found<0){current=-1;audio.pause();audio.removeAttribute('src');audio.load()}else current=found}
-updatePlaying();}catch(e){status.textContent='음악 목록을 읽을 수 없습니다. start_windows.bat로 서버 실행 또는 refresh_images.py로 목록 생성이 필요합니다.';list.innerHTML='';}}
-function selectTrack(index,play=true){if(index<0||index>=tracks.length)return;const changed=current!==index;current=index;if(changed){audio.src=mediaUrl(tracks[index].file);audio.load();text('musicCurrent','0:00');text('musicDuration','0:00');byId('musicSeek').value=0}updatePlaying();if(play){const p=audio.play();if(p?.catch)p.catch(()=>{status.textContent='재생할 수 없습니다. 파일 형식과 경로를 확인하거나 다른 음원을 사용해 주세요.';updatePlaying()})}}
-function toggle(){if(current<0){if(tracks.length)selectTrack(0);else go('music');return}if(audio.paused){const p=audio.play();if(p?.catch)p.catch(()=>status.textContent='재생이 차단되거나 오디오 형식이 지원되지 않습니다.')}else audio.pause()}
-function step(delta,fromEnd=false){if(!tracks.length)return;if(current<0){selectTrack(0);return}let next=current+delta;if(next>=tracks.length||next<0){if(repeatMode===1||!fromEnd)next=(next+tracks.length)%tracks.length;else {audio.pause();return}}selectTrack(next)}
-byId('musicPlay').onclick=toggle;byId('musicPrev').onclick=()=>step(-1);byId('musicNext').onclick=()=>step(1);byId('musicOpen').onclick=()=>go('music');byId('musicDockToggle').onclick=()=>go('music');byId('musicReload').onclick=loadTracks;
-list.addEventListener('click',e=>{const b=e.target.closest('[data-track-index]');if(!b)return;const i=Number(b.dataset.trackIndex);if(i===current)toggle();else selectTrack(i)});
-byId('musicRepeat').onclick=()=>{repeatMode=(repeatMode+1)%3;updateRepeat();savePrefs()};
-byId('musicVolume').oninput=e=>{audio.volume=Number(e.target.value)/100;audio.muted=false;updateMute();savePrefs()};
-function updateMute(){text('musicMute',audio.muted||audio.volume===0?'🔇':'🔊');byId('musicMute').setAttribute('aria-label',audio.muted?'음소거 해제':'음소거')}
-byId('musicMute').onclick=()=>{audio.muted=!audio.muted;updateMute()};
-byId('musicSeek').oninput=e=>{if(Number.isFinite(audio.duration)&&audio.duration>0)audio.currentTime=Number(e.target.value)/1000*audio.duration};
-audio.addEventListener('timeupdate',()=>{text('musicCurrent',duration(audio.currentTime));byId('musicSeek').value=Number.isFinite(audio.duration)&&audio.duration>0?String(Math.round(audio.currentTime/audio.duration*1000)):'0'});
-audio.addEventListener('loadedmetadata',()=>text('musicDuration',duration(audio.duration)));
-audio.addEventListener('play',updatePlaying);audio.addEventListener('pause',updatePlaying);
-audio.addEventListener('ended',()=>{if(repeatMode===2){audio.currentTime=0;audio.play().catch(()=>{})}else step(1,true)});
-audio.addEventListener('error',()=>{if(current>=0)status.textContent='음악을 읽지 못했습니다: '+tracks[current].file+' — 파일 경로 또는 코덱을 확인하세요.'});
-updateRepeat();updateMute();loadTracks();
+ const audio=document.getElementById('musicAudio');
+ const $=id=>document.getElementById(id);
+ let tracks=[],index=-1,blocked=false;
+ const safeName=name=>typeof name==='string'&&!name.startsWith('/')&&!name.includes('..')&&!name.includes('\\')&&/\.(mp3|wav|ogg|m4a|aac)$/i.test(name);
+ const url=name=>'music/'+name.split('/').map(encodeURIComponent).join('/');
+ const displayName=name=>name.split('/').pop().replace(/\.[^.]+$/,'').replace(/[-_]/g,' ');
+ const preference=()=>{try{localStorage.setItem('maker-bgm-volume',String(audio.volume));localStorage.setItem('maker-bgm-muted',String(audio.muted))}catch{}};
+ try{
+  const saved=localStorage.getItem('maker-bgm-volume');
+  audio.volume=saved===null?0.35:Math.max(0,Math.min(1,Number(saved)||0));
+  audio.muted=localStorage.getItem('maker-bgm-muted')==='true';
+ }catch{audio.volume=0.35}
+ $('bgmVolume').value=Math.round(audio.volume*100);
+ function ui(message){
+  const active=tracks[index];
+  $('bgmTitle').textContent=active?active.title:'MAKER LAB BGM';
+  $('bgmToggle').textContent=audio.paused?'▶':'❚❚';
+  $('bgmToggle').setAttribute('aria-label',audio.paused?'배경음악 재생':'배경음악 일시정지');
+  $('bgmMute').textContent=audio.muted||audio.volume===0?'🔇':'🔊';
+  $('bgmMute').setAttribute('aria-label',audio.muted?'음소거 해제':'음소거');
+  $('bgmStatus').textContent=message||(tracks.length===0?'music 폴더에 MP3 파일을 넣어 주세요':blocked?'▶ 버튼을 눌러 음악을 켜세요':audio.paused?'일시정지':'재생 중');
+  $('bgmPlayer').classList.toggle('empty',!tracks.length);
+ }
+ function setTrack(i){
+  if(!tracks.length)return false;
+  index=(i+tracks.length)%tracks.length;
+  audio.src=url(tracks[index].file);
+  audio.load();
+  ui();return true;
+ }
+ async function play(){
+  if(index<0&&!setTrack(0))return;
+  try{await audio.play();blocked=false;ui()}
+  catch(e){blocked=true;ui(e?.name==='NotAllowedError'?'▶ 버튼을 눌러 재생하세요':'재생 실패 · 음원 파일을 확인해 주세요')}
+ }
+ $('bgmToggle').addEventListener('click',()=>{if(audio.paused)play();else audio.pause()});
+ $('bgmNext').addEventListener('click',()=>{if(setTrack(index+1))play()});
+ $('bgmMute').addEventListener('click',()=>{audio.muted=!audio.muted;preference();ui()});
+ $('bgmVolume').addEventListener('input',e=>{audio.volume=Number(e.target.value)/100;audio.muted=false;preference();ui()});
+ audio.addEventListener('play',()=>ui());
+ audio.addEventListener('pause',()=>ui());
+ audio.addEventListener('ended',()=>{if(setTrack(index+1))play()});
+ audio.addEventListener('error',()=>ui('파일을 읽을 수 없습니다'));
+ async function setup(){
+  try{
+   const res=await fetch('music-manifest.json?t='+Date.now(),{cache:'no-store'});
+   if(!res.ok)throw Error('manifest');
+   const data=await res.json();
+   let meta={};
+   try{const r=await fetch('music/tracks.json?t='+Date.now(),{cache:'no-store'});if(r.ok)meta=(await r.json()).tracks||{}}catch{}
+   tracks=(Array.isArray(data.tracks)?data.tracks:[]).filter(safeName).map(file=>({file,title:String((meta[file]||meta[file.split('/').pop()]||{}).title||displayName(file))}));
+   if(tracks.length){setTrack(0);await play()}else ui();
+  }catch{ui('음악 목록을 읽을 수 없습니다')}
+ }
+ ui();setup();
 })();

@@ -10,7 +10,7 @@ class Handler(SimpleHTTPRequestHandler):
     def __init__(self,*a,**kw): super().__init__(*a,directory=str(ROOT),**kw)
     def do_GET(self):
         if self.path.split('?')[0] == '/gallery-manifest.json':
-            folders=[ROOT/'gallery', ROOT/'galley']
+            folders=[ROOT/'gallery']
             images=sorted([{'file':p.relative_to(folder).as_posix(),'folder':folder.name} for folder in folders for p in folder.rglob('*') if p.is_file() and p.suffix.lower() in ALLOWED and not p.name.startswith('.')],key=lambda v:(v['folder'],v['file'].casefold()))
             data=json.dumps({'images':images},ensure_ascii=False).encode('utf-8')
             self.send_response(200);self.send_header('Content-Type','application/json; charset=utf-8')

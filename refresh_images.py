@@ -10,7 +10,7 @@ images=sorted(p.relative_to(folder).as_posix() for p in folder.rglob('*') if p.i
 print(f'이미지 {len(images)}개 등록 완료: images-manifest.json')
 
 # 작품 갤러리 목록 생성
-folders=[root/'gallery',root/'galley']
+folders=[root/'gallery']
 works=sorted(({'file':p.relative_to(folder).as_posix(),'folder':folder.name} for folder in folders for p in folder.rglob('*') if p.is_file() and p.suffix.lower() in allowed and not p.name.startswith('.')),key=lambda v:(v['folder'],v['file'].casefold()))
 (root/'gallery-manifest.json').write_text(json.dumps({'images':works},ensure_ascii=False,indent=2),encoding='utf-8')
 print(f'작품 {len(works)}개 등록 완료: gallery-manifest.json')
