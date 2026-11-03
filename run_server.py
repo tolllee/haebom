@@ -15,6 +15,13 @@ class Handler(SimpleHTTPRequestHandler):
             data=json.dumps({'images':images},ensure_ascii=False).encode('utf-8')
             self.send_response(200);self.send_header('Content-Type','application/json; charset=utf-8')
             self.send_header('Cache-Control','no-store');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
+        elif self.path.split('?')[0] == '/music-manifest.json':
+            folder=ROOT/'music'
+            allowed_music={'.mp3','.wav','.ogg','.m4a','.aac'}
+            tracks=sorted([v.relative_to(folder).as_posix() for v in folder.rglob('*') if v.is_file() and v.suffix.lower() in allowed_music and not v.name.startswith('.')],key=str.casefold)
+            data=json.dumps({'tracks':tracks},ensure_ascii=False).encode('utf-8')
+            self.send_response(200);self.send_header('Content-Type','application/json; charset=utf-8')
+            self.send_header('Cache-Control','no-store');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
         elif self.path.split('?')[0] == '/images-manifest.json':
             folder=ROOT/'images'
             images=sorted([p.relative_to(folder).as_posix() for p in folder.rglob('*') if p.is_file() and p.suffix.lower() in ALLOWED and not p.name.startswith('.')])
